@@ -1283,6 +1283,9 @@
         </div>
         <div class="settings-hint" style="margin-top:4px;">Opens a clean read-only page with clickable Google Maps links. No login or API keys needed. Anyone with the link can view.</div>
       </div>
+      <button onclick="saveResultsPdf()" class="settings-save" style="background:#1a1714;margin-top:0;">
+        <i class="fa-solid fa-file-pdf"></i> Save as PDF
+      </button>
       <a id="openResultsBtn" href="#" target="_blank" class="settings-save" style="text-decoration:none;margin-top:0;">
         <i class="fa-solid fa-arrow-up-right-from-square"></i> Open Results Page
       </a>
@@ -1808,6 +1811,12 @@ async function shareResults() {
 function closeShareResults() {
   document.getElementById('shareResultsOverlay').classList.remove('open');
   document.body.style.overflow = '';
+}
+
+function saveResultsPdf() {
+  // Open results page then trigger print
+  const win = window.open('/results.html?src=session', '_blank');
+  win.addEventListener('load', () => win.print());
 }
 
 // ===================== SHARE RESULTS =====================
