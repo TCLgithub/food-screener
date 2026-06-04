@@ -157,6 +157,21 @@ const server = http.createServer((req, res) => {
     return placesHandler(parsed.query, res);
   }
 
+  // Dynamic keys.js — served from Render environment variables
+  if (pathname === '/keys.js') {
+    const keys = {
+      google:   process.env.GOOGLE_PLACES_KEY  || '',
+      gemini:   process.env.GEMINI_KEY          || '',
+      deepseek: process.env.DEEPSEEK_KEY        || '',
+      claude:   process.env.CLAUDE_KEY          || '',
+      openai:   process.env.OPENAI_KEY          || '',
+    };
+    const js = `window.FOOD_SCREENER_KEYS = ${JSON.stringify(keys)};`;
+    res.writeHead(200, { 'Content-Type': 'application/javascript' });
+    res.end(js);
+    return;
+  }
+
   // Static files
   let filePath = pathname === '/' ? '/index.html' : pathname;
   const fullPath = path.join(__dirname, filePath);
