@@ -2006,21 +2006,12 @@ function updateClearBtn() {
 }
 
 document.getElementById('clearLocation').addEventListener('click', () => {
-  // If we have GPS coords, restore "Current Location" instead of blanking
-  if (locationCoords) {
-    locInput.value = 'Current Location';
-    filters.locationName = 'Current Location';
-    filters.coordinates = locationCoords;
-    updateClearBtn();
-    updateFieldActive('fieldLocation', true);
-  } else {
-    locInput.value = '';
-    filters.locationName = '';
-    filters.coordinates = null;
-    updateClearBtn();
-    updateFieldActive('fieldLocation', false);
-    locInput.focus();
-  }
+  locInput.value = '';
+  filters.locationName = '';
+  filters.coordinates = null;
+  updateClearBtn();
+  updateFieldActive('fieldLocation', false);
+  locInput.focus();
 });
 
 // ===================== MULTISELECT =====================
