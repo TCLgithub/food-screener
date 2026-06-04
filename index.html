@@ -1761,17 +1761,14 @@ async function shareResults() {
   const title = buildShareDescription();
   const now   = new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
   const payload = { restaurants: restaurants, title: title, date: now };
-  const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
-  const longUrl = window.location.origin + '/results.html?d=' + encoded;
 
-  // Store in sessionStorage so Open Results Page works without long URL
+  // Store in sessionStorage so Open Results Page works instantly
   try { sessionStorage.setItem('fsResults', JSON.stringify(payload)); } catch(e) {}
 
   const urlInput = document.getElementById('shareResultsUrl');
   const openBtn  = document.getElementById('openResultsBtn');
   const copyBtn  = document.getElementById('copyResultsBtn');
 
-  // Open Results Page uses sessionStorage route (no URL length limit)
   openBtn.href = '/results.html?src=session';
   openBtn.onclick = function(e) {
     e.preventDefault();
@@ -1781,18 +1778,29 @@ async function shareResults() {
   document.getElementById('shareResultsOverlay').classList.add('open');
   document.body.style.overflow = 'hidden';
 
-  // Shorten in background for the share link
-  urlInput.value = 'Shortening…';
+  // Generate short server-side link
+  urlInput.value = 'Generating link…';
   copyBtn.textContent = 'Copy';
   copyBtn.disabled = true;
 
   try {
-    const short = await shortenUrl(longUrl);
-    urlInput.value = short;
+    const resp = await fetch('/api/share', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const { id } = await resp.json();
+    const shortUrl = window.location.origin + '/r/' + id;
+    urlInput.value = shortUrl;
+    openBtn.href = shortUrl;
+    openBtn.onclick = function(e) {
+      e.preventDefault();
+      window.open(shortUrl, '_blank');
+    };
     copyBtn.disabled = false;
   } catch(e) {
-    console.warn('Shortening failed:', e);
-    urlInput.value = longUrl;
+    console.warn('Share link failed:', e);
+    urlInput.value = window.location.origin + '/results.html?src=session';
     copyBtn.disabled = false;
   }
 }

@@ -43,10 +43,18 @@ h1{font-family:'DM Serif Display',serif;font-size:24px;margin-bottom:6px;line-he
 .foot a{color:#e85d2f;text-decoration:none;font-weight:600}
 .error{text-align:center;padding:60px 20px;color:#aaa}
 .error h2{font-size:20px;color:#ccc;margin-bottom:8px}
+.pdf-btn{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:#fff;background:#e85d2f;border:none;border-radius:8px;padding:6px 14px;cursor:pointer;font-family:inherit;text-decoration:none;transition:background 0.15s}
+.pdf-btn:hover{background:#c44821}
 @media(max-width:500px){
   h1{font-size:19px}.card{padding:13px;gap:9px}
   .top{flex-direction:column;gap:5px}.rating{align-self:flex-start}
   .meta{gap:8px}
+}
+@media print{
+  .pdf-btn,.back-btn{display:none!important}
+  .card{break-inside:avoid;box-shadow:none!important;border-color:#ddd!important}
+  body{background:#fff}
+  .page{padding:10px}
 }
 </style>
 </head>
@@ -98,26 +106,30 @@ function render(data, title, date) {
       '<span>📅 ' + now + '</span>' +
       '<span>🍽 ' + data.length + ' restaurant' + (data.length!==1?'s':'') + '</span>' +
       '<span>⭐ 4.0+ · 100+ reviews</span>' +
+      '<button class="pdf-btn" onclick="window.print()">🖨 Save as PDF</button>' +
       '<a class="back-btn" href="/">← Back to App</a>' +
     '</div>' +
     '<div class="list">' + rows + '</div>';
 }
 
-// Read data from sessionStorage (direct open) or ?d= param (shared link)
+// Load data: injected by server (/r/:id), sessionStorage, or ?d= legacy param
 try {
-  const params = new URLSearchParams(window.location.search);
   let decoded;
 
-  if (params.get('src') === 'session') {
-    // Opened directly from the app via sessionStorage
-    const stored = sessionStorage.getItem('fsResults');
-    if (!stored) throw new Error('No session data');
-    decoded = JSON.parse(stored);
+  if (window.__SHARE_DATA__) {
+    // Injected by server for short /r/:id links
+    decoded = window.__SHARE_DATA__;
   } else {
-    // Opened via shared link with ?d= encoded data
-    const d = params.get('d');
-    if (!d) throw new Error('No data');
-    decoded = JSON.parse(decodeURIComponent(escape(atob(d))));
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('src') === 'session') {
+      const stored = sessionStorage.getItem('fsResults');
+      if (!stored) throw new Error('No session data');
+      decoded = JSON.parse(stored);
+    } else {
+      const d = params.get('d');
+      if (!d) throw new Error('No data');
+      decoded = JSON.parse(decodeURIComponent(escape(atob(d))));
+    }
   }
   render(decoded.restaurants, decoded.title, decoded.date);
 } catch(e) {

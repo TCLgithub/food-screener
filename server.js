@@ -4,6 +4,21 @@ const fs = require('fs');
 const path = require('path');
 const url = require('url');
 
+// ── Short-link store (in-memory, survives until server restarts) ──
+const shareStore = new Map(); // id → { data, createdAt }
+const SHARE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+function randomId() {
+  return Math.random().toString(36).slice(2, 8); // 6-char alphanumeric
+}
+
+function pruneExpired() {
+  const now = Date.now();
+  for (const [id, entry] of shareStore) {
+    if (now - entry.createdAt > SHARE_TTL_MS) shareStore.delete(id);
+  }
+}
+
 const PORT = process.env.PORT || 3000;
 
 const MIME = {
@@ -155,6 +170,48 @@ const server = http.createServer((req, res) => {
   // Netlify-compatible proxy path
   if (pathname === '/.netlify/functions/places') {
     return placesHandler(parsed.query, res);
+  }
+
+  // ── POST /api/share — save results, return short ID ──
+  if (pathname === '/api/share' && req.method === 'POST') {
+    let body = '';
+    req.on('data', c => { body += c; });
+    req.on('end', () => {
+      try {
+        pruneExpired();
+        const data = JSON.parse(body);
+        let id = randomId();
+        while (shareStore.has(id)) id = randomId();
+        shareStore.set(id, { data, createdAt: Date.now() });
+        res.writeHead(200, { 'Content-Type': 'application/json', ...CORS });
+        res.end(JSON.stringify({ id }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json', ...CORS });
+        res.end(JSON.stringify({ error: 'Invalid JSON' }));
+      }
+    });
+    return;
+  }
+
+  // ── GET /r/:id — serve results page for short link ──
+  if (pathname.startsWith('/r/')) {
+    const id = pathname.slice(3);
+    const entry = shareStore.get(id);
+    if (!entry) {
+      res.writeHead(404, { 'Content-Type': 'text/plain' });
+      res.end('Results not found or expired.');
+      return;
+    }
+    // Serve results.html with data injected as inline script
+    const htmlPath = path.join(__dirname, 'results.html');
+    fs.readFile(htmlPath, 'utf8', (err, html) => {
+      if (err) { res.writeHead(500); res.end('Error'); return; }
+      const injection = `<script>window.__SHARE_DATA__ = ${JSON.stringify(entry.data)};</script>`;
+      html = html.replace('</head>', injection + '</head>');
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end(html);
+    });
+    return;
   }
 
   // Dynamic keys.js — served from Render environment variables
