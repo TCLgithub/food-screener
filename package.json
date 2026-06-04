@@ -1,0 +1,12 @@
+{
+  "name": "food-screener",
+  "version": "1.0.0",
+  "description": "Precision dining discovery app",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
