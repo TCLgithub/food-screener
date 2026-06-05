@@ -2302,6 +2302,7 @@ async function searchWithGooglePlaces(googleKey) {
     .map(p => {
       const placeId = p.id;
       const mapsUrl = `https://www.google.com/maps/place/?q=place_id:${placeId}`;
+      const reviewsUrl = `https://search.google.com/local/reviews?placeid=${placeId}`;
       const pLat = p.location?.latitude;
       const pLng = p.location?.longitude;
       const distKm = (pLat && pLng) ? haversine(lat, lng, pLat, pLng) : null;
@@ -2326,7 +2327,7 @@ async function searchWithGooglePlaces(googleKey) {
         fullHours: null,
         status: isOpen === true ? 'Open' : isOpen === false ? 'Closed' : 'Unknown',
         mapsUrl,
-        reviewsUrl: mapsUrl,
+        reviewsUrl,
         website: '',
         phoneNumber: '',
         placeId,
@@ -2653,9 +2654,10 @@ async function openModal(idx) {
   document.getElementById('modalHighlights').innerHTML = `<span style="font-size:12px;color:var(--muted);">Loading…</span>`;
 
   const actEl = document.getElementById('modalActions');
+  const initRevUrl = r.reviewsUrl || `https://search.google.com/local/reviews?placeid=${r.placeId}`;
   actEl.innerHTML = `
-    <a href="${mapsUrl}" target="_blank" rel="noopener" class="modal-btn modal-btn-dark"><i class="fa-solid fa-map"></i> Google Maps</a>
-    <a href="${mapsUrl}" target="_blank" rel="noopener" class="modal-btn modal-btn-brand"><i class="fa-solid fa-star"></i> Reviews</a>
+    <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer" class="modal-btn modal-btn-dark"><i class="fa-solid fa-map"></i> Google Maps</a>
+    <a href="${initRevUrl}" target="_blank" rel="noopener noreferrer" class="modal-btn modal-btn-brand"><i class="fa-solid fa-star"></i> Reviews</a>
     <span class="modal-btn modal-btn-outline disabled"><i class="fa-solid fa-globe"></i> Loading…</span>
     <span class="modal-btn modal-btn-outline disabled"><i class="fa-solid fa-phone"></i> Loading…</span>
   `;
@@ -2688,15 +2690,16 @@ async function openModal(idx) {
         hoursEl.innerHTML = `<div style="font-size:12px;color:var(--muted);padding:8px;background:var(--surface);border-radius:8px;">${r.operatingHours || 'Hours not available'}</div>`;
       }
 
-      // Highlights from reviews
+      // Highlights from reviews — Places API New returns text as {text, languageCode} object
       const hlEl = document.getElementById('modalHighlights');
       const reviews = det.reviews || [];
       if (reviews.length) {
-        // Extract snippets from top reviews
-        const snippets = reviews.slice(0,3).map(rv => {
-          const txt = rv.text || '';
-          const snippet = txt.length > 60 ? txt.substring(0,60) + '…' : txt;
-          return `<span class="highlight-pill" title="${esc(txt)}">${esc(snippet)}</span>`;
+        const snippets = reviews.slice(0, 3).map(rv => {
+          const txt = (rv.text?.text || rv.originalText?.text || rv.text || '').toString();
+          const snippet = txt.length > 80 ? txt.substring(0, 80) + '…' : txt;
+          const author = rv.authorAttribution?.displayName || rv.author_name || '';
+          const rating = rv.rating ? '★'.repeat(rv.rating) : '';
+          return `<span class="highlight-pill" title="${esc(txt)}">${rating ? `<b>${rating}</b> ` : ''}${esc(snippet)}${author ? ` — ${esc(author)}` : ''}</span>`;
         });
         hlEl.innerHTML = snippets.join('');
       } else {
@@ -2706,14 +2709,15 @@ async function openModal(idx) {
       // Update price level if available
       if (det.price_level !== undefined) r.priceLevel = det.price_level;
 
-      // Actions with real website + phone
+      // Actions with real website + phone — use proper reviews URL
       const website = det.websiteUri || '';
       const phone = det.nationalPhoneNumber || '';
+      const revUrl = r.reviewsUrl || `https://search.google.com/local/reviews?placeid=${r.placeId}`;
       actEl.innerHTML = `
-        <a href="${mapsUrl}" target="_blank" rel="noopener" class="modal-btn modal-btn-dark"><i class="fa-solid fa-map"></i> Google Maps</a>
-        <a href="${mapsUrl}" target="_blank" rel="noopener" class="modal-btn modal-btn-brand"><i class="fa-solid fa-star"></i> Reviews</a>
+        <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer" class="modal-btn modal-btn-dark"><i class="fa-solid fa-map"></i> Google Maps</a>
+        <a href="${revUrl}" target="_blank" rel="noopener noreferrer" class="modal-btn modal-btn-brand"><i class="fa-solid fa-star"></i> Reviews</a>
         ${website
-          ? `<a href="${esc(website)}" target="_blank" rel="noopener" class="modal-btn modal-btn-outline"><i class="fa-solid fa-globe"></i> Website</a>`
+          ? `<a href="${esc(website)}" target="_blank" rel="noopener noreferrer" class="modal-btn modal-btn-outline"><i class="fa-solid fa-globe"></i> Website</a>`
           : `<span class="modal-btn modal-btn-outline disabled"><i class="fa-solid fa-globe"></i> No Website</span>`}
         ${phone
           ? `<a href="tel:${esc(phone)}" class="modal-btn modal-btn-outline"><i class="fa-solid fa-phone"></i> ${esc(phone)}</a>`
@@ -2738,11 +2742,11 @@ async function openModal(idx) {
     document.getElementById('modalHighlights').innerHTML = hl.length
       ? hl.map(h => `<span class="highlight-pill">${esc(String(h))}</span>`).join('')
       : '<span style="font-size:12px;color:var(--muted);">No highlights listed</span>';
-    const revUrl = r.reviewsUrl || mapsUrl;
+    const revUrl = r.reviewsUrl || (r.placeId ? `https://search.google.com/local/reviews?placeid=${r.placeId}` : mapsUrl);
     actEl.innerHTML = `
-      <a href="${mapsUrl}" target="_blank" rel="noopener" class="modal-btn modal-btn-dark"><i class="fa-solid fa-map"></i> Google Maps</a>
-      <a href="${revUrl}" target="_blank" rel="noopener" class="modal-btn modal-btn-brand"><i class="fa-solid fa-star"></i> Reviews</a>
-      ${r.website ? `<a href="${r.website}" target="_blank" rel="noopener" class="modal-btn modal-btn-outline"><i class="fa-solid fa-globe"></i> Website</a>`
+      <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer" class="modal-btn modal-btn-dark"><i class="fa-solid fa-map"></i> Google Maps</a>
+      <a href="${revUrl}" target="_blank" rel="noopener noreferrer" class="modal-btn modal-btn-brand"><i class="fa-solid fa-star"></i> Reviews</a>
+      ${r.website ? `<a href="${r.website}" target="_blank" rel="noopener noreferrer" class="modal-btn modal-btn-outline"><i class="fa-solid fa-globe"></i> Website</a>`
         : `<span class="modal-btn modal-btn-outline disabled"><i class="fa-solid fa-globe"></i> No Website</span>`}
       ${r.phoneNumber ? `<a href="tel:${r.phoneNumber}" class="modal-btn modal-btn-outline"><i class="fa-solid fa-phone"></i> Call</a>`
         : `<span class="modal-btn modal-btn-outline disabled"><i class="fa-solid fa-phone"></i> No Phone</span>`}
