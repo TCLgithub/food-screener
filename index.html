@@ -2656,8 +2656,8 @@ async function openModal(idx) {
   const actEl = document.getElementById('modalActions');
   const initRevUrl = r.reviewsUrl || `https://search.google.com/local/reviews?placeid=${r.placeId}`;
   actEl.innerHTML = `
-    <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer" class="modal-btn modal-btn-dark"><i class="fa-solid fa-map"></i> Google Maps</a>
-    <a href="${initRevUrl}" target="_blank" rel="noopener noreferrer" class="modal-btn modal-btn-brand"><i class="fa-solid fa-star"></i> Reviews</a>
+    <a href="${mapsUrl}" onclick="openLink(event,'${mapsUrl}')" class="modal-btn modal-btn-dark"><i class="fa-solid fa-map"></i> Google Maps</a>
+    <a href="${initRevUrl}" onclick="openLink(event,'${initRevUrl}')" class="modal-btn modal-btn-brand"><i class="fa-solid fa-star"></i> Reviews</a>
     <span class="modal-btn modal-btn-outline disabled"><i class="fa-solid fa-globe"></i> Loading…</span>
     <span class="modal-btn modal-btn-outline disabled"><i class="fa-solid fa-phone"></i> Loading…</span>
   `;
@@ -2714,10 +2714,10 @@ async function openModal(idx) {
       const phone = det.nationalPhoneNumber || '';
       const revUrl = r.reviewsUrl || `https://search.google.com/local/reviews?placeid=${r.placeId}`;
       actEl.innerHTML = `
-        <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer" class="modal-btn modal-btn-dark"><i class="fa-solid fa-map"></i> Google Maps</a>
-        <a href="${revUrl}" target="_blank" rel="noopener noreferrer" class="modal-btn modal-btn-brand"><i class="fa-solid fa-star"></i> Reviews</a>
+        <a href="${mapsUrl}" onclick="openLink(event,'${mapsUrl}')" class="modal-btn modal-btn-dark"><i class="fa-solid fa-map"></i> Google Maps</a>
+        <a href="${revUrl}" onclick="openLink(event,'${revUrl}')" class="modal-btn modal-btn-brand"><i class="fa-solid fa-star"></i> Reviews</a>
         ${website
-          ? `<a href="${esc(website)}" target="_blank" rel="noopener noreferrer" class="modal-btn modal-btn-outline"><i class="fa-solid fa-globe"></i> Website</a>`
+          ? `<a href="${esc(website)}" onclick="openLink(event,'${esc(website)}')" class="modal-btn modal-btn-outline"><i class="fa-solid fa-globe"></i> Website</a>`
           : `<span class="modal-btn modal-btn-outline disabled"><i class="fa-solid fa-globe"></i> No Website</span>`}
         ${phone
           ? `<a href="tel:${esc(phone)}" class="modal-btn modal-btn-outline"><i class="fa-solid fa-phone"></i> ${esc(phone)}</a>`
@@ -2744,14 +2744,21 @@ async function openModal(idx) {
       : '<span style="font-size:12px;color:var(--muted);">No highlights listed</span>';
     const revUrl = r.reviewsUrl || (r.placeId ? `https://search.google.com/local/reviews?placeid=${r.placeId}` : mapsUrl);
     actEl.innerHTML = `
-      <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer" class="modal-btn modal-btn-dark"><i class="fa-solid fa-map"></i> Google Maps</a>
-      <a href="${revUrl}" target="_blank" rel="noopener noreferrer" class="modal-btn modal-btn-brand"><i class="fa-solid fa-star"></i> Reviews</a>
-      ${r.website ? `<a href="${r.website}" target="_blank" rel="noopener noreferrer" class="modal-btn modal-btn-outline"><i class="fa-solid fa-globe"></i> Website</a>`
+      <a href="${mapsUrl}" onclick="openLink(event,'${mapsUrl}')" class="modal-btn modal-btn-dark"><i class="fa-solid fa-map"></i> Google Maps</a>
+      <a href="${revUrl}" onclick="openLink(event,'${revUrl}')" class="modal-btn modal-btn-brand"><i class="fa-solid fa-star"></i> Reviews</a>
+      ${r.website ? `<a href="${r.website}" onclick="openLink(event,'${r.website}')" class="modal-btn modal-btn-outline"><i class="fa-solid fa-globe"></i> Website</a>`
         : `<span class="modal-btn modal-btn-outline disabled"><i class="fa-solid fa-globe"></i> No Website</span>`}
       ${r.phoneNumber ? `<a href="tel:${r.phoneNumber}" class="modal-btn modal-btn-outline"><i class="fa-solid fa-phone"></i> Call</a>`
         : `<span class="modal-btn modal-btn-outline disabled"><i class="fa-solid fa-phone"></i> No Phone</span>`}
     `;
   }
+}
+
+// Open external link reliably on both Android and iOS
+function openLink(e, url) {
+  e.preventDefault();
+  e.stopPropagation();
+  window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 function closeModal(e) {
