@@ -1553,19 +1553,23 @@ const FOOD_HIERARCHY = [
 // Flat list of known dish names (with bracket-notes stripped) for matching against review text
 const KNOWN_DISHES = [...new Set(FOOD_HIERARCHY.map(f => f.dish.replace(/\s*\(.*?\)\s*/g, '').trim()).filter(Boolean))];
 
-// Scan review text for mentions of known dishes (case-insensitive whole-word-ish match)
+// Escape regex special characters in a string
+function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+// Scan review text for mentions of known dishes using whole-word boundary matching
+// (prevents false positives like "Pho" matching inside "photo" or "phone")
 function extractPopularDishes(reviewTexts, cuisineTags) {
   const found = new Map(); // dish -> mention count
   const combined = (reviewTexts || []).join(' \n ').toLowerCase();
   if (!combined.trim()) return [];
 
   KNOWN_DISHES.forEach(dish => {
-    const needle = dish.toLowerCase();
-    if (needle.length < 3) return;
-    // Count occurrences
-    let idx = 0, count = 0;
-    while ((idx = combined.indexOf(needle, idx)) !== -1) { count++; idx += needle.length; }
-    if (count > 0) found.set(dish, count);
+    const needle = dish.toLowerCase().trim();
+    if (needle.length < 4) return; // skip very short names prone to false matches (e.g. "Pho", "Roti")
+    // \b word-boundary match — only matches whole words, not substrings inside other words
+    const re = new RegExp('\\b' + escapeRegex(needle) + '\\b', 'g');
+    const matches = combined.match(re);
+    if (matches && matches.length) found.set(dish, matches.length);
   });
 
   return [...found.entries()]
