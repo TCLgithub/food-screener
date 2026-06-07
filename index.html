@@ -1173,6 +1173,9 @@
         <i class="fa-solid fa-circle-info" style="font-size:10px;"></i>
         Quality filter: 100+ reviews only
       </span>
+      <button class="btn btn-ghost hidden" id="clearAllBtn2" onclick="clearAllFilters()" style="font-size:11px;padding:6px 12px;">
+        <i class="fa-solid fa-trash-can"></i> Clear All
+      </button>
       <button class="btn btn-ghost hidden" id="shareResultsBtn" onclick="shareResults()" style="margin-left:auto;font-size:11px;padding:6px 12px;">
         <i class="fa-solid fa-share-nodes"></i> Share Results
       </button>
@@ -2239,6 +2242,8 @@ function updateClearAllBtn() {
     filters.type.length || filters.dish.length || filters.price.length ||
     filters.keyword || filters.openNow;
   document.getElementById('clearAllBtn').classList.toggle('hidden', !active);
+  const btn2 = document.getElementById('clearAllBtn2');
+  if (btn2) btn2.classList.toggle('hidden', !active);
 }
 
 function clearAllFilters() {
