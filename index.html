@@ -244,7 +244,7 @@
 
   /* Location input with clear + GPS buttons */
   .location-wrap { position: relative; }
-  .location-wrap input { padding-left: 36px; padding-right: 62px; }
+  .location-wrap input { padding-left: 36px; padding-right: 62px; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
   .clear-btn {
     position: absolute;
     right: 34px; top: 50%;
@@ -676,6 +676,9 @@
     input[type="text"], select { padding: 8px 10px; font-size: 12px; }
     .has-icon input { padding-left: 30px; }
     .input-wrap i { font-size: 11px; left: 9px; }
+    .location-wrap input { padding-left: 30px; padding-right: 58px; font-size: 12px; }
+    .location-wrap .clear-btn { right: 32px; width: 18px; height: 18px; }
+    .location-wrap .gps-btn { right: 6px; width: 20px; height: 20px; font-size: 12px; }
     .ms-trigger { padding: 8px 10px; font-size: 12px; }
 
     /* Filter row */
@@ -1251,17 +1254,18 @@
       <div class="modal-tags" id="modalTags"></div>
       <div class="modal-name" id="modalName"></div>
       <div class="modal-addr"><i class="fa-solid fa-location-dot" style="color:var(--brand);"></i><span id="modalAddr"></span></div>
-      <div class="modal-grid">
-        <div>
-          <div class="modal-section-title"><i class="fa-solid fa-clock"></i> Operating Hours</div>
-          <div id="modalHours"></div>
-        </div>
-        <div>
-          <div class="modal-section-title"><i class="fa-solid fa-star"></i> Highlights</div>
-          <div class="highlight-pills" id="modalHighlights"></div>
-        </div>
+
+      <div style="margin-top:18px;">
+        <div class="modal-section-title"><i class="fa-solid fa-star"></i> Highlights &amp; Popular Dishes</div>
+        <div class="highlight-pills" id="modalHighlights"></div>
       </div>
+
       <div class="modal-actions" id="modalActions"></div>
+
+      <div style="margin-top:20px;">
+        <div class="modal-section-title"><i class="fa-solid fa-clock"></i> Operating Hours</div>
+        <div id="modalHours"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -1456,8 +1460,8 @@ const FOOD_HIERARCHY = [
   { category: "Western", cuisine: "Spanish", subCuisine: "", type: "", dish: "Paella" },
   { category: "Western", cuisine: "Spanish", subCuisine: "", type: "", dish: "Tapas" },
   { category: "Asian", cuisine: "Chinese", subCuisine: "Cantonese", type: "Dim Sum", dish: "Char Siu Bao (barbecued pork buns)" },
-  { category: "Asian", cuisine: "Chinese", subCuisine: "Cantonese", type: "Dim sum", dish: "Har Gow (shrimp dumplings)" },
-  { category: "Asian", cuisine: "Chinese", subCuisine: "Cantonese", type: "Dim sum", dish: "Siu Mai (steamed pork dumplings)" },
+  { category: "Asian", cuisine: "Chinese", subCuisine: "Cantonese", type: "Dim Sum", dish: "Har Gow (shrimp dumplings)" },
+  { category: "Asian", cuisine: "Chinese", subCuisine: "Cantonese", type: "Dim Sum", dish: "Siu Mai (steamed pork dumplings)" },
   { category: "Asian", cuisine: "Chinese", subCuisine: "Cantonese", type: "Dry Noodle", dish: "Wonton Mee" },
   { category: "Asian", cuisine: "Chinese", subCuisine: "Hainanese", type: "Rice", dish: "Hainanese Chicken Rice" },
   { category: "Asian", cuisine: "Chinese", subCuisine: "Hakka", type: "", dish: "Yong Tau Foo" },
@@ -1500,7 +1504,7 @@ const FOOD_HIERARCHY = [
   { category: "Asian", cuisine: "Nyonya", subCuisine: "", type: "", dish: "Otak-otak" },
   { category: "Asian", cuisine: "Hakka", subCuisine: "", type: "", dish: "Yong Tau Foo (stuffed tofu)" },
   { category: "Asian", cuisine: "Hokkien", subCuisine: "", type: "", dish: "Bak Kut Teh (herbal pork soup)" },
-  { category: "Asian", cuisine: "Sarawak", subCuisine: "", type: "Soup noodle", dish: "Sarawak Laksa" },
+  { category: "Asian", cuisine: "Sarawak", subCuisine: "", type: "Soup Noodle", dish: "Sarawak Laksa" },
   { category: "African", cuisine: "Ethiopian", subCuisine: "", type: "", dish: "Injera" },
   { category: "African", cuisine: "Moroccan", subCuisine: "", type: "", dish: "Tagine" },
   { category: "African", cuisine: "Nigerian", subCuisine: "", type: "", dish: "Jollof Rice" },
@@ -1513,6 +1517,30 @@ const FOOD_HIERARCHY = [
   { category: "Oceanic", cuisine: "Australian", subCuisine: "", type: "", dish: "Meat Pie" },
   { category: "Central Asian", cuisine: "Uzbek", subCuisine: "", type: "", dish: "Plov" },
 ];
+
+// Flat list of known dish names (with bracket-notes stripped) for matching against review text
+const KNOWN_DISHES = [...new Set(FOOD_HIERARCHY.map(f => f.dish.replace(/\s*\(.*?\)\s*/g, '').trim()).filter(Boolean))];
+
+// Scan review text for mentions of known dishes (case-insensitive whole-word-ish match)
+function extractPopularDishes(reviewTexts, cuisineTags) {
+  const found = new Map(); // dish -> mention count
+  const combined = (reviewTexts || []).join(' \n ').toLowerCase();
+  if (!combined.trim()) return [];
+
+  KNOWN_DISHES.forEach(dish => {
+    const needle = dish.toLowerCase();
+    if (needle.length < 3) return;
+    // Count occurrences
+    let idx = 0, count = 0;
+    while ((idx = combined.indexOf(needle, idx)) !== -1) { count++; idx += needle.length; }
+    if (count > 0) found.set(dish, count);
+  });
+
+  return [...found.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([dish]) => dish);
+}
 
 const PRICE_OPTIONS = ["$", "$$", "$$$", "$$$$"];
 const LOADING_MSGS = [
@@ -2406,9 +2434,10 @@ Keyword: ${filters.keyword || 'None'}
 Max results: ${filters.limit}
 
 STRICT RULES: Only return restaurants with 100+ reviews. Return up to ${filters.limit} results sorted by rating desc.
+For "highlights": include 4-6 items — a mix of popular/recommended dishes (e.g. "Char Siu Bao", "Hainanese Chicken Rice") AND short standout comments customers commonly make (e.g. "Generous portions", "Fast service", "Great value for money"). Be specific to the restaurant's actual cuisine and menu — don't use generic filler.
 
 Return ONLY a JSON array (no markdown):
-[{"id":"unique","name":"Name","cuisineTags":["Tag"],"rating":4.5,"userRatingsTotal":500,"priceLevel":2,"address":"Full address","distance":"1.2 km","highlights":["h1"],"operatingHours":"Hours","fullHours":{"Monday":"11am-10pm"},"status":"Open","mapsUrl":"https://maps.google.com/?q=Name+Address","reviewsUrl":"","website":"","phoneNumber":""}]`;
+[{"id":"unique","name":"Name","cuisineTags":["Tag"],"rating":4.5,"userRatingsTotal":500,"priceLevel":2,"address":"Full address","distance":"1.2 km","highlights":["Popular Dish 1","Popular Dish 2","Standout comment 1","Standout comment 2"],"operatingHours":"Hours","fullHours":{"Monday":"11am-10pm"},"status":"Open","mapsUrl":"https://maps.google.com/?q=Name+Address","reviewsUrl":"","website":"","phoneNumber":""}]`;
 }
 
 // ── AI provider call functions ──
@@ -2562,7 +2591,7 @@ function renderTable(data) {
           <div>
             <div class="rest-name">
               ${esc(r.name || 'Unknown')}
-              <a class="maps-link-inline" href="${mapsUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Open in Google Maps">
+              <a class="maps-link-inline" href="${mapsUrl}" onclick="openLink(event,'${mapsUrl}')" title="Open in Google Maps">
                 <i class="fa-solid fa-location-dot"></i>
               </a>
             </div>
@@ -2602,7 +2631,7 @@ function renderMobile(data) {
         <div style="flex:1;min-width:0;">
           <div class="mcard-name">
             ${esc(r.name || 'Unknown')}
-            <a class="maps-link-inline" href="${mapsUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Google Maps">
+            <a class="maps-link-inline" href="${mapsUrl}" onclick="openLink(event,'${mapsUrl}')" title="Google Maps">
               <i class="fa-solid fa-location-dot"></i>
             </a>
           </div>
@@ -2693,18 +2722,24 @@ async function openModal(idx) {
       // Highlights from reviews — Places API New returns text as {text, languageCode} object
       const hlEl = document.getElementById('modalHighlights');
       const reviews = det.reviews || [];
-      if (reviews.length) {
-        const snippets = reviews.slice(0, 3).map(rv => {
-          const txt = (rv.text?.text || rv.originalText?.text || rv.text || '').toString();
-          const snippet = txt.length > 80 ? txt.substring(0, 80) + '…' : txt;
-          const author = rv.authorAttribution?.displayName || rv.author_name || '';
-          const rating = rv.rating ? '★'.repeat(rv.rating) : '';
-          return `<span class="highlight-pill" title="${esc(txt)}">${rating ? `<b>${rating}</b> ` : ''}${esc(snippet)}${author ? ` — ${esc(author)}` : ''}</span>`;
-        });
-        hlEl.innerHTML = snippets.join('');
-      } else {
-        hlEl.innerHTML = '<span style="font-size:12px;color:var(--muted);">No review highlights available</span>';
-      }
+      const reviewTexts = reviews.map(rv => (rv.text?.text || rv.originalText?.text || rv.text || '').toString());
+
+      const dishPills = extractPopularDishes(reviewTexts, r.cuisineTags)
+        .map(d => `<span class="highlight-pill" style="background:#fff3ee;border-color:#f0a47a;"><i class="fa-solid fa-utensils" style="font-size:9px;margin-right:3px;"></i>${esc(d)}</span>`);
+
+      const reviewPills = reviews.slice(0, 4).map((rv, idx) => {
+        const txt = reviewTexts[idx];
+        if (!txt) return '';
+        const snippet = txt.length > 90 ? txt.substring(0, 90) + '…' : txt;
+        const author = rv.authorAttribution?.displayName || rv.author_name || '';
+        const rating = rv.rating ? '★'.repeat(rv.rating) : '';
+        return `<span class="highlight-pill" title="${esc(txt)}">${rating ? `<b>${rating}</b> ` : ''}${esc(snippet)}${author ? ` — ${esc(author)}` : ''}</span>`;
+      }).filter(Boolean);
+
+      const allPills = [...dishPills, ...reviewPills];
+      hlEl.innerHTML = allPills.length
+        ? allPills.join('')
+        : '<span style="font-size:12px;color:var(--muted);">No highlights available</span>';
 
       // Update price level if available
       if (det.price_level !== undefined) r.priceLevel = det.price_level;
