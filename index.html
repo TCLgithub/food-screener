@@ -1854,7 +1854,7 @@ async function shareResults() {
   copyBtn.disabled = true;
 
   try {
-    const resp = await fetch('/api/share', {
+    const resp = await fetch('/.netlify/functions/share', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)

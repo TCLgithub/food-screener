@@ -1,6 +1,16 @@
 [build]
   functions = "netlify/functions"
 
+[[redirects]]
+  from = "/keys.js"
+  to = "/.netlify/functions/keys"
+  status = 200
+
+[[redirects]]
+  from = "/r/:id"
+  to = "/.netlify/functions/results?id=:id"
+  status = 200
+
 [[headers]]
   for = "/*"
   [headers.values]
