@@ -2370,7 +2370,7 @@ async function searchWithGooglePlaces(googleKey) {
     .slice(0, filters.limit)
     .map(p => {
       const placeId = p.id;
-      const mapsUrl = `https://www.google.com/maps/place/?q=place_id:${placeId}`;
+      const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.displayName?.text || '')}&query_place_id=${placeId}`;
       const reviewsUrl = `https://search.google.com/local/reviews?placeid=${placeId}`;
       const pLat = p.location?.latitude;
       const pLng = p.location?.longitude;
@@ -2564,9 +2564,9 @@ function applyClientFilters(data) {
   return data.filter(r => {
     if ((r.userRatingsTotal || 0) < 100) return false;
     if (filters.minRating > 0 && (r.rating || 0) < filters.minRating) return false;
-    if (r.distance) {
-      const n = parseFloat(r.distance.replace(/[^\d.]/g, ''));
-      if (!isNaN(n) && n > filters.radius) return false;
+    if (r.distance && r.distance !== 'N/A') {
+      const distKm = parseDist(r.distance);
+      if (isFinite(distKm) && distKm > filters.radius) return false;
     }
     return true;
   });
@@ -2834,7 +2834,7 @@ async function openModal(idx) {
 function openLink(e, url) {
   e.preventDefault();
   e.stopPropagation();
-  window.open(url, '_blank', 'noopener,noreferrer');
+  window.open(url, '_blank');
 }
 
 function closeModal(e) {
