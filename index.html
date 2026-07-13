@@ -2342,7 +2342,7 @@ async function searchWithGooglePlaces(googleKey) {
     },
     body: JSON.stringify({
       textQuery: query,
-      locationBias: { circle: { center: { latitude: lat, longitude: lng }, radius: radiusM } },
+      locationRestriction: { circle: { center: { latitude: lat, longitude: lng }, radius: radiusM } },
       maxResultCount: Math.min(filters.limit * 2, 20)
     })
   });
@@ -2564,9 +2564,8 @@ function applyClientFilters(data) {
   return data.filter(r => {
     if ((r.userRatingsTotal || 0) < 100) return false;
     if (filters.minRating > 0 && (r.rating || 0) < filters.minRating) return false;
-    if (r.distance && r.distance !== 'N/A') {
-      const distKm = parseDist(r.distance);
-      if (isFinite(distKm) && distKm > filters.radius) return false;
+    if (r.distanceNum !== undefined && r.distanceNum < 999) {
+      if (r.distanceNum > filters.radius) return false;
     }
     return true;
   });
