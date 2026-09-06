@@ -7,6 +7,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/share"
+  to = "/.netlify/functions/share"
+  status = 200
+
+[[redirects]]
   from = "/r/:id"
   to = "/.netlify/functions/results?id=:id"
   status = 200
