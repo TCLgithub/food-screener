@@ -1018,6 +1018,10 @@
   .adv-count { font-size:10px; background:var(--brand); color:white; border-radius:10px; padding:1px 6px; font-weight:700; margin-left:2px; }
   @media (max-width:700px) { .adv-hint { display:none; } }
 
+  /* ADV COLUMNS — hidden until screening data exists */
+  .adv-col { display: none; }
+  table.has-adv .adv-col { display: table-cell; }
+
   /* MATCH QUALITY BADGES */
   .match-badge { display:inline-flex; align-items:center; gap:3px; font-size:9px; font-weight:700; padding:2px 6px; border-radius:10px; text-transform:uppercase; letter-spacing:0.04em; white-space:nowrap; vertical-align:middle; }
   .match-strong  { background:#edfaf2; color:#1a7a40; border:1px solid #86d4a5; }
@@ -1314,7 +1318,7 @@
 
     <!-- Desktop table -->
     <div class="table-wrap hidden" id="tableWrap">
-      <table>
+      <table id="mainTable">
         <thead>
           <tr>
             <th class="sortable" data-sort="name">Restaurant <i class="fa-solid fa-sort sort-icon"></i></th>
@@ -1323,6 +1327,11 @@
             <th class="sortable" data-sort="price">Price <i class="fa-solid fa-sort sort-icon"></i></th>
             <th class="sortable" data-sort="distance">Distance <i class="fa-solid fa-sort sort-icon"></i></th>
             <th>Status</th>
+            <th class="adv-col">Match</th>
+            <th class="adv-col">Halal</th>
+            <th class="adv-col">Corkage</th>
+            <th class="adv-col">Pet</th>
+            <th class="adv-col">Budget/pax</th>
           </tr>
         </thead>
         <tbody id="tableBody"></tbody>
@@ -2923,8 +2932,39 @@ function renderTable(data) {
         <span class="status-dot ${statusDot}"></span>
         <span class="${statusText}">${esc(r.status || 'Unknown')}</span>
       </td>
+      <td class="adv-col">${advMatchCell(r)}</td>
+      <td class="adv-col">${advInfoCell(r.screenHalal, 'halal')}</td>
+      <td class="adv-col">${advInfoCell(r.screenCorkage, 'corkage')}</td>
+      <td class="adv-col">${advInfoCell(r.screenPet, 'pet')}</td>
+      <td class="adv-col" style="white-space:nowrap;">${r.screenBudget ? `<span style="font-size:11px;font-weight:700;color:var(--success);">${esc(r.screenBudget)}</span>` : '<span style="font-size:11px;color:var(--border);">—</span>'}</td>
     </tr>`;
   }).join('');
+  document.getElementById('mainTable')?.classList.toggle('has-adv', data.some(r => r.matchQuality && r.matchQuality !== 'screening'));
+}
+
+function advMatchCell(r) {
+  if (!r.matchQuality) return '<span style="font-size:11px;color:var(--border);">—</span>';
+  if (r.matchQuality === 'screening') return '<span class="match-badge match-screening" style="font-size:9px;"><i class="fa-solid fa-spinner fa-spin" style="font-size:8px;"></i></span>';
+  const cls = r.matchQuality === 'strong' ? 'match-strong' : r.matchQuality === 'partial' ? 'match-partial' : 'match-unknown';
+  const icon = r.matchQuality === 'strong' ? '✓' : r.matchQuality === 'partial' ? '~' : '?';
+  const lbl = r.matchQuality === 'strong' ? 'Strong' : r.matchQuality === 'partial' ? 'Partial' : 'Unknown';
+  return `<span class="match-badge ${cls}" title="${esc(r.matchNote||'')}">${icon} ${lbl}</span>`;
+}
+
+function advInfoCell(val, type) {
+  if (!val || val === 'Unknown') return '<span style="font-size:11px;color:var(--border);">?</span>';
+  const styles = {
+    halal:   { yes: '#2e7d32', bg: '#e8f5e9', kw: ['halal','muslim'] },
+    corkage: { yes: '#e65100', bg: '#fff3e0', kw: ['free','allowed','rm'] },
+    pet:     { yes: '#6a1b9a', bg: '#f3e5f5', kw: ['yes','outdoor','allowed'] },
+  };
+  const s = styles[type] || {};
+  const lower = val.toLowerCase();
+  const isPositive = (s.kw||[]).some(k => lower.includes(k));
+  const isNegative = lower.includes('no') || lower.includes('not') || lower.includes('non');
+  const color = isNegative ? 'var(--muted)' : (isPositive ? s.yes : 'var(--muted)');
+  const bg    = isNegative ? 'transparent' : (isPositive ? s.bg : 'transparent');
+  return `<span style="font-size:11px;font-weight:600;color:${color};background:${bg};padding:2px 6px;border-radius:6px;white-space:nowrap;">${esc(val)}</span>`;
 }
 
 function renderMobile(data) {
@@ -2967,8 +3007,26 @@ function renderMobile(data) {
           <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${statusColor};margin-right:4px;vertical-align:middle;"></span>${esc(r.status || 'Unknown')}
         </span>
       </div>
+      ${buildMobileAdvRow(r)}
     </div>`;
   }).join('');
+}
+
+function buildMobileAdvRow(r) {
+  const hasAdv = r.matchQuality || r.screenHalal || r.screenCorkage || r.screenPet || r.screenBudget;
+  if (!hasAdv) return '';
+  const pills = [];
+  if (r.matchQuality && r.matchQuality !== 'screening') {
+    const cls = r.matchQuality === 'strong' ? 'match-strong' : r.matchQuality === 'partial' ? 'match-partial' : 'match-unknown';
+    const lbl = r.matchQuality === 'strong' ? '✓ Strong' : r.matchQuality === 'partial' ? '~ Partial' : '? Unknown';
+    pills.push(`<span class="match-badge ${cls}">${lbl}</span>`);
+  }
+  if (r.screenBudget) pills.push(`<span style="font-size:10px;font-weight:700;color:var(--success);background:#edfaf2;padding:2px 7px;border-radius:10px;">💰 ${esc(r.screenBudget)}</span>`);
+  if (r.screenHalal && r.screenHalal !== 'Unknown') pills.push(`<span style="font-size:10px;font-weight:700;color:#2e7d32;background:#e8f5e9;padding:2px 7px;border-radius:10px;">☪ ${esc(r.screenHalal)}</span>`);
+  if (r.screenCorkage && r.screenCorkage !== 'Unknown') pills.push(`<span style="font-size:10px;font-weight:700;color:#e65100;background:#fff3e0;padding:2px 7px;border-radius:10px;">🍷 ${esc(r.screenCorkage)}</span>`);
+  if (r.screenPet && r.screenPet !== 'Unknown') pills.push(`<span style="font-size:10px;font-weight:700;color:#6a1b9a;background:#f3e5f5;padding:2px 7px;border-radius:10px;">🐾 ${esc(r.screenPet)}</span>`);
+  if (!pills.length) return '';
+  return `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;padding-top:8px;border-top:1px solid #f3f1ec;">${pills.join('')}</div>`;
 }
 
 // ===================== MODAL =====================
